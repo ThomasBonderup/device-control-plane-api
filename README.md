@@ -1,8 +1,8 @@
-# Certificate Control Plane API
+# Device Control Plane API
 
 ## Overview
 
-Certificate Control Plane API is a Spring Boot service for embedded device certificate lifecycle automation. It manages certificate inventory, renewal workflow state, tenant-aware access, and related operational metadata through a REST API.
+Device Control Plane API is a Spring Boot service for embedded device certificate lifecycle automation. It manages certificate inventory, renewal workflow state, tenant-aware access, and related operational metadata through a REST API.
 
 The current scope centers on certificate lifecycle workflows:
 
