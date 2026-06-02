@@ -1,5 +1,6 @@
 package com.combotto.controlplane.repositories;
 
+import java.util.List;
 import java.util.UUID;
 import java.time.OffsetDateTime;
 

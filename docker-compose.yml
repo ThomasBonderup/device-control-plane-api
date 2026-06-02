@@ -19,8 +19,8 @@ services:
       AUTH_ISSUER_URI: http://localhost:${KEYCLOAK_HOST_PORT:-9000}/realms/combotto
       AUTH_JWK_SET_URI: http://keycloak:8080/realms/combotto/protocol/openid-connect/certs
     depends_on:
-      - keycloak
-
+      keycloak:
+        condition: service_healthy
   keycloak:
     image: quay.io/keycloak/keycloak:26.6.1
     container_name: combotto-keycloak
@@ -31,6 +31,7 @@ services:
       KC_BOOTSTRAP_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD:-REPLACE_ME_LOCAL_KEYCLOAK_ADMIN_PASSWORD}
       KC_HOSTNAME: ${KEYCLOAK_HOSTNAME:-http://localhost:${KEYCLOAK_HOST_PORT:-9000}}
       KC_HOSTNAME_STRICT: "false"
+      KC_HEALTH_ENABLED: ${KEYCLOAK_HEALTH_ENABLED:-true}
       KEYCLOAK_DEMO_READ_CLIENT_ID: ${KEYCLOAK_DEMO_READ_CLIENT_ID:-control-plane-demo-read-cli}
       KEYCLOAK_DEMO_READ_CLIENT_SECRET: ${KEYCLOAK_DEMO_READ_CLIENT_SECRET:-REPLACE_ME_LOCAL_DEMO_READ_CLIENT_SECRET}
       KEYCLOAK_PROMETHEUS_CLIENT_ID: ${KEYCLOAK_PROMETHEUS_CLIENT_ID:-control-plane-prometheus}
@@ -61,3 +62,14 @@ services:
       - -c
     command:
       - sh /opt/keycloak/data/local-config/scripts/render-realm.sh && exec /opt/keycloak/bin/kc.sh start-dev --import-realm
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - >
+          bash -ec 'exec 3<>/dev/tcp/127.0.0.1/9000;
+          printf "GET /health/ready HTTP/1.1\r\nHost: 127.0.0.1\r\n\r\n" >&3;
+          timeout 2 cat <&3 | grep -q "\"status\":\"UP\""'
+      interval: 10s
+      timeout: 5s
+      retries: 30
+      start_period: 30s

@@ -54,3 +54,5 @@ postman/local-dev.postman_environment.json
 
 # Local tooling
 .bloop/
+
+stm32.log

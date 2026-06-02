@@ -25,7 +25,7 @@ public class CertificateRenewalStatusChangedConsumer {
     this.historyRepository = historyRepository;
   }
 
-  @KafkaListener(topics = "${audit.kafka.topics.certificate.renew-status-changed:certificate-renewal-status-changed}", groupId = "${spring.kafka.consumer.certificate-renewal-status-history-group-id:control-plane-renewal-history}")
+  @KafkaListener(topics = "${audit.kafka.topics.certificate.renew-status-changed:certificate-renewal-status-changed}", groupId = "${spring.kafka.consumer.certificate-renewal-status-history-group-id:control-plane-renewal-history}", containerFactory = "stringKafkaListenerContainerFactory")
   public void handle(CertificateRenewalStatusChangedEvent event) {
     log.info("Consumed renewal status change event for certificate {}", event.certificateId());
     CertificateRenewalStatusHistoryEntity history = new CertificateRenewalStatusHistoryEntity();
