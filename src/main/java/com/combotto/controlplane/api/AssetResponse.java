@@ -20,8 +20,6 @@ public record AssetResponse(
     String serialNumber,
     @Schema(description = "Hardware model, when known.", example = "STM32L475")
     String hardwareModel,
-    @Schema(description = "Firmware version, when known.", example = "1.0.0")
-    String firmwareVersion,
     @Schema(description = "Protocol used by the asset.", example = "mqtt")
     String protocol,
     @Schema(description = "Human-readable site label.", example = "lab")
