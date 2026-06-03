@@ -104,11 +104,13 @@ Key fields include:
 - name
 - externalRef
 - parentAssetId
-- serialNumber / hardwareModel / firmwareVersion
+- serialNumber / hardwareModel
 - protocol
 - siteLabel
 - metadataJson
 - isDeleted
+
+Firmware state is owned by `control_plane.device_firmware_state`; asset responses do not read or expose `public.assets.firmware_version`.
 
 ### CertificateBinding
 

@@ -39,7 +39,6 @@ public class AssetService {
         entity.getParentAssetId(),
         entity.getSerialNumber(),
         entity.getHardwareModel(),
-        entity.getFirmwareVersion(),
         entity.getProtocol(),
         entity.getSiteLabel(),
         entity.getMetadataJson(),

@@ -33,9 +33,6 @@ public class AssetEntity {
   @Column(name = "hardware_model")
   private String hardwareModel;
 
-  @Column(name = "firmware_version")
-  private String firmwareVersion;
-
   private String protocol;
 
   @Column(name = "site_label")
@@ -109,14 +106,6 @@ public class AssetEntity {
 
   public void setHardwareModel(String hardwareModel) {
     this.hardwareModel = hardwareModel;
-  }
-
-  public String getFirmwareVersion() {
-    return firmwareVersion;
-  }
-
-  public void setFirmwareVersion(String firmwareVersion) {
-    this.firmwareVersion = firmwareVersion;
   }
 
   public String getProtocol() {
