@@ -9,11 +9,16 @@ import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.MapsId;
 import jakarta.persistence.OneToOne;
+import jakarta.persistence.PostLoad;
+import jakarta.persistence.PostPersist;
 import jakarta.persistence.Table;
+import jakarta.persistence.Transient;
+
+import org.springframework.data.domain.Persistable;
 
 @Entity
 @Table(name = "device_firmware_state", schema = "control_plane")
-public class DeviceFirmwareStateEntity {
+public class DeviceFirmwareStateEntity implements Persistable<Long> {
 
   @Id
   @Column(name = "asset_id")
@@ -80,6 +85,25 @@ public class DeviceFirmwareStateEntity {
 
   @Column(name = "updated_at", nullable = false)
   private OffsetDateTime updatedAt;
+
+  @Transient
+  private boolean newEntity = true;
+
+  @Override
+  public Long getId() {
+    return assetId;
+  }
+
+  @Override
+  public boolean isNew() {
+    return newEntity;
+  }
+
+  @PostLoad
+  @PostPersist
+  void markNotNew() {
+    this.newEntity = false;
+  }
 
   public Long getAssetId() {
     return assetId;

@@ -68,7 +68,7 @@ services:
         - >
           bash -ec 'exec 3<>/dev/tcp/127.0.0.1/9000;
           printf "GET /health/ready HTTP/1.1\r\nHost: 127.0.0.1\r\n\r\n" >&3;
-          timeout 2 cat <&3 | grep -q "\"status\":\"UP\""'
+          timeout 2 cat <&3 | grep -q "\"status\"[[:space:]]*:[[:space:]]*\"UP\""'
       interval: 10s
       timeout: 5s
       retries: 30
