@@ -4,6 +4,8 @@ import java.time.Clock;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
 import java.time.temporal.ChronoUnit;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Optional;
 
 import org.apache.kafka.clients.consumer.ConsumerRecord;
@@ -87,35 +89,39 @@ public class DeviceFirmwareStateConsumer {
   private Optional<CanonicalDeviceFirmwareState> canonicalDeviceFirmwareState(
       DeviceFirmwareStateEvent event,
       ConsumerRecord<String, DeviceFirmwareStateEvent> record) {
-    if (isBlank(event.deviceId()) || isBlank(event.firmwareVersion()) || isBlank(event.otaStatus())) {
-      logSkippedMissingFields(record);
+    List<String> missingRequiredFields = missingRequiredFields(event);
+    if (!missingRequiredFields.isEmpty()) {
+      logSkippedMissingFields(event, record, missingRequiredFields);
       return Optional.empty();
     }
 
-    Optional<DeviceFirmwareOtaStatus> otaStatus = DeviceFirmwareOtaStatus.from(event.otaStatus());
+    String effectiveOtaStatus = normalizeOtaStatus(event, record);
+    Optional<DeviceFirmwareOtaStatus> otaStatus = DeviceFirmwareOtaStatus.from(effectiveOtaStatus);
     if (otaStatus.isEmpty()) {
       logSkippedUnknownStatus(event, record);
       return Optional.empty();
     }
 
-    Optional<DeviceFirmwareStateSourceKind> sourceKind =
-        DeviceFirmwareStateSourceKind.from(event.sourceKind());
-    if (sourceKind.isEmpty()) {
-      logSkippedUnknownSourceKind(event, record);
+    if (!"firmware_update.v1".equals(event.schema())) {
+      logSkippedUnknownSchema(event, record);
       return Optional.empty();
     }
 
     OffsetDateTime receivedAtUtc = currentTimestamp();
-    OffsetDateTime reportedAt = event.reportedAt() != null ? event.reportedAt() : receivedAtUtc;
+    OffsetDateTime reportedAt =
+        event.payload().reportedAt() != null
+            ? event.payload().reportedAt()
+            : event.receivedAt() != null ? event.receivedAt() : receivedAtUtc;
+    String sourceKind = DeviceFirmwareStateSourceKind.DEVICE_REPORT.value();
 
     return Optional.of(new CanonicalDeviceFirmwareState(
         event.deviceId().trim(),
-        event.firmwareVersion().trim(),
-        trimToNull(event.previousFirmwareVersion()),
-        trimToNull(event.jobId()),
+        event.payload().firmwareVersion().trim(),
+        trimToNull(event.payload().previousFirmwareVersion()),
+        trimToNull(event.payload().jobId()),
         otaStatus.get().name(),
         reportedAt,
-        sourceKind.get().value(),
+        sourceKind,
         receivedAtUtc));
   }
 
@@ -165,9 +171,18 @@ public class DeviceFirmwareStateConsumer {
         record.key());
   }
 
-  private void logSkippedMissingFields(ConsumerRecord<String, DeviceFirmwareStateEvent> record) {
+  private void logSkippedMissingFields(
+      DeviceFirmwareStateEvent event,
+      ConsumerRecord<String, DeviceFirmwareStateEvent> record,
+      List<String> missingRequiredFields) {
     log.warn(
-        "Skipped device firmware state event with missing required fields topic={} partition={} offset={} key={}",
+        "Skipped device firmware state event with missing required fields missing_fields={} "
+            + "value_device_id={} value_firmware_version={} value_ota_status={} "
+            + "topic={} partition={} offset={} key={}",
+        missingRequiredFields,
+        event.deviceId(),
+        event.payload() == null ? null : event.payload().firmwareVersion(),
+        event.payload() == null ? null : event.payload().otaStatus(),
         record.topic(),
         record.partition(),
         record.offset(),
@@ -179,19 +194,34 @@ public class DeviceFirmwareStateConsumer {
       ConsumerRecord<String, DeviceFirmwareStateEvent> record) {
     log.warn(
         "Skipped device firmware state event with unknown ota_status={} topic={} partition={} offset={} key={}",
-        event.otaStatus(),
+        event.payload() == null ? null : event.payload().otaStatus(),
         record.topic(),
         record.partition(),
         record.offset(),
         record.key());
   }
 
-  private void logSkippedUnknownSourceKind(
+  private void logNormalizedUnknownStatus(
       DeviceFirmwareStateEvent event,
       ConsumerRecord<String, DeviceFirmwareStateEvent> record) {
     log.warn(
-        "Skipped device firmware state event with unknown source_kind={} topic={} partition={} offset={} key={}",
-        event.sourceKind(),
+        "Normalized device firmware state event ota_status=UNKNOWN to ota_status=CURRENT "
+            + "until device firmware reports a concrete status device_id={} firmware_version={} "
+            + "topic={} partition={} offset={} key={}",
+        event.deviceId(),
+        event.payload().firmwareVersion(),
+        record.topic(),
+        record.partition(),
+        record.offset(),
+        record.key());
+  }
+
+  private void logSkippedUnknownSchema(
+      DeviceFirmwareStateEvent event,
+      ConsumerRecord<String, DeviceFirmwareStateEvent> record) {
+    log.warn(
+        "Skipped device firmware state event with unknown schema={} topic={} partition={} offset={} key={}",
+        event.schema(),
         record.topic(),
         record.partition(),
         record.offset(),
@@ -214,6 +244,34 @@ public class DeviceFirmwareStateConsumer {
         .now(clock)
         .withOffsetSameInstant(ZoneOffset.UTC)
         .truncatedTo(ChronoUnit.MILLIS);
+  }
+
+  private List<String> missingRequiredFields(DeviceFirmwareStateEvent event) {
+    List<String> missingFields = new ArrayList<>();
+    if (isBlank(event.deviceId())) {
+      missingFields.add("device_id");
+    }
+    if (event.payload() == null) {
+      missingFields.add("payload");
+      return missingFields;
+    }
+    if (isBlank(event.payload().firmwareVersion())) {
+      missingFields.add("firmware_version");
+    }
+    if (isBlank(event.payload().otaStatus())) {
+      missingFields.add("ota_status");
+    }
+    return missingFields;
+  }
+
+  private String normalizeOtaStatus(
+      DeviceFirmwareStateEvent event,
+      ConsumerRecord<String, DeviceFirmwareStateEvent> record) {
+    if ("UNKNOWN".equalsIgnoreCase(event.payload().otaStatus().trim())) {
+      logNormalizedUnknownStatus(event, record);
+      return DeviceFirmwareOtaStatus.CURRENT.name();
+    }
+    return event.payload().otaStatus();
   }
 
   private String trimToNull(String value) {
